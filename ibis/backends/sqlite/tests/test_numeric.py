@@ -20,3 +20,13 @@ def test_divide_precision(con):
     tm.assert_series_equal(
         actual, expected, check_exact=False, check_names=False, atol=0.001
     )
+
+
+def test_cast_string_inf_nan_to_float(con):
+    t = ibis.memtable({"s": ["inf", "-inf", "Infinity", " -INF ", "nan", "1.5"]})
+
+    result = con.execute(t.s.cast("float64")).tolist()
+
+    assert result[:4] == [float("inf"), float("-inf"), float("inf"), float("-inf")]
+    assert pd.isna(result[4])
+    assert result[5] == 1.5

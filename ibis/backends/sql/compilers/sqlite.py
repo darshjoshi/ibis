@@ -120,6 +120,17 @@ class SQLiteCompiler(SQLGlotCompiler):
             return self.f.date(arg)
         elif to.is_time():
             return self.f.time(arg)
+        elif to.is_floating() and op.arg.dtype.is_string():
+            # SQLite's CAST parses only the longest numeric prefix of a string,
+            # so 'inf', 'nan' and friends silently become 0.0
+            value = self.f.lower(self.f.trim(arg))
+            return (
+                sg.case()
+                .when(value.isin("inf", "+inf", "infinity", "+infinity"), self.POS_INF)
+                .when(value.isin("-inf", "-infinity"), self.NEG_INF)
+                .when(value.isin("nan", "+nan", "-nan"), self.NAN)
+                .else_(self.cast(arg, to))
+            )
         return super().visit_Cast(op, arg=arg, to=to)
 
     def visit_Limit(self, op, *, parent, n, offset):
